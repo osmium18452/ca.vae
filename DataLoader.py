@@ -14,6 +14,7 @@ class DataLoader:
     def __init__(self, trainset_filename, testset_filename, testset_gt_filename, n_variate=-1, n_samples=-1):
         f = open(trainset_filename, "rb")
         self.train_data = np.array(pickle.load(f))
+        print("...", self.train_data.shape)
         f.close()
         self.train_data = self.train_data[:n_samples, :n_variate]
 
@@ -58,6 +59,7 @@ class DataLoader:
 
     def prepare_ad_data(self, graph, univariate=True, temporal=False, window_size=20):
         parent_list = self.get_parents(graph)
+        self.parent_list=parent_list
         self.R = []
         self.P = []
         for (i, node) in enumerate(parent_list):
@@ -104,19 +106,19 @@ class DataLoader:
         self.P_testset_y = []
 
         for i in self.P:
-            self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array(parent_list[i])].transpose())
+            self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array(parent_list[i] + [i])].transpose())
             self.P_trainset_y.append(self.non_zero_data_train.transpose()[i].transpose())
-            self.P_testset_x.append(self.non_zero_data_test.transpose()[np.array(parent_list[i])].transpose())
+            self.P_testset_x.append(self.non_zero_data_test.transpose()[np.array(parent_list[i] + [i])].transpose())
             self.P_testset_y.append(self.non_zero_data_test.transpose()[i].transpose())
             # print(parent_list[i])
             # print(self.non_zero_data_train.transpose()[np.array(parent_list[i])].transpose().shape)
         # print(np.shape(self.P_trainset_y))
 
     def load_train_data(self):
-        return (self.R_trainset_x, self.R_trainset_y), (self.P_trainset_x, self.P_trainset_y)
+        return self.R_trainset_x, self.P_trainset_x
 
     def load_test_data(self):
-        return (self.R_testset_x, self.R_testset_y), (self.P_testset_x, self.P_testset_y)
+        return self.R_testset_x, self.P_testset_x
 
 
 if __name__ == '__main__':
@@ -132,18 +134,14 @@ if __name__ == '__main__':
     # print(Record['G'].graph)
     # print(Record['G'])
     dataloader.prepare_ad_data(Record['G'].graph, univariate=True)
-    (R_trainset_x, R_trainset_y), (P_trainset_x, P_trainset_y)=dataloader.load_train_data()
-    (R_testset_x, R_testset_y), (P_testset_x, P_testset_y)=dataloader.load_test_data()
+    R_trainset_x, P_trainset_x = dataloader.load_train_data()
+    R_testset_x, P_testset_x = dataloader.load_test_data()
 
     print(np.shape(R_trainset_x))
-    print(np.shape(R_trainset_y))
-    print(np.shape(P_trainset_y))
     for i in P_trainset_x:
         print(np.shape(i))
 
     print(np.shape(R_testset_x))
-    print(np.shape(R_testset_y))
-    print(np.shape(P_testset_y))
     for i in P_testset_x:
         print(np.shape(i))
     # print(dataloader.non_zero_data.shape)
