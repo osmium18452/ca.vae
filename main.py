@@ -14,6 +14,7 @@ import os
 import numpy as np
 from DataLoader import DataLoader
 from VAE import VAE
+from AE import AE
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
@@ -23,11 +24,12 @@ parser.add_argument("-p", "--parent", default=5, type=int)
 parser.add_argument("-v", "--variates", default=None, type=int)
 parser.add_argument("--show", action="store_true")
 parser.add_argument("--latent", default=5, type=int)
-parser.add_argument("--gpu",action="store_true")
-parser.add_argument("-r","--learning_rate",default=0.001,type=float)
-parser.add_argument("-e","--epoch",default=80,type=int)
-parser.add_argument("-b","--batch",default=1024,type=int)
-
+parser.add_argument("--gpu", action="store_true")
+parser.add_argument("-r", "--learning_rate", default=0.001, type=float)
+parser.add_argument("-e", "--epoch", default=80, type=int)
+parser.add_argument("-b", "--batch", default=1024, type=int)
+parser.add_argument("-m", "--multivariate", action="store_true")
+parser.add_argument("-w", "--window_size", default=20, type=int)
 args = parser.parse_args()
 
 num_train_samples = args.num_train_samples
@@ -36,10 +38,12 @@ parent = args.parent
 variates = args.variates
 show = args.show
 latent = args.latent
-gpu=args.gpu
-learning_rate=args.learning_rate
-epoch=args.epoch
-batch_size=args.batch
+gpu = args.gpu
+learning_rate = args.learning_rate
+epoch = args.epoch
+batch_size = args.batch
+univariate = not args.multivariate
+window_size = args.window_size
 
 trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
 testset_filename = "ServerMachineDataset/test/pkl/machine-1-1.pkl"
@@ -52,26 +56,78 @@ with open("save/machine.1.1.pkl", "rb") as f:
     Record = pickle.load(f)
 # print(Record['G'].graph)
 # print(Record['G'])
-dataloader.prepare_ad_data(Record['G'].graph, univariate=True)
-R_trainset_x, P_trainset_x = dataloader.load_train_data()
-R_testset_x, P_testset_x = dataloader.load_test_data()
+dataloader.prepare_ad_data(Record['G'].graph, univariate=univariate, window_size=window_size)
+if univariate:
+    R_trainset_x, R_trainset_y, P_trainset_x = dataloader.load_train_data(univariate=univariate)
+    R_testset_x, R_testset_y, P_testset_x = dataloader.load_test_data(univariate=univariate)
+else:
+    R_trainset_x, P_trainset_x = dataloader.load_train_data(univariate=univariate)
+    R_testset_x, P_testset_x = dataloader.load_test_data(univariate=univariate)
+
+# print(R_trainset_x.shape, R_trainset_y.shape)
+
+R_train_set = torch.Tensor(R_trainset_x)
+R_test_set = torch.Tensor(R_testset_x)
+R_input_size = R_train_set.shape[1]
+R_latent_size = latent
+R_trainset_size=R_train_set.shape[0]
+
+print("???",R_trainset_x.shape)
+
+# train ae
+model_R = AE(R_input_size, R_latent_size)
+if gpu:
+    model_R.cuda()
+optimizer = optim.Adam(model_R.parameters(), lr=learning_rate)
+mse_loss = nn.MSELoss()
+
+for epochs in range(epoch):
+    if epochs % 10 == 0:
+        permutation = np.random.permutation(R_trainset_size)
+        R_train_set = R_train_set[permutation]
+
+    iter = R_trainset_size // batch_size
+    with tqdm(total=iter, ascii=True) as pbar:
+        pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
+        for i in range(iter):
+            batch_x = R_train_set[i * batch_size:(i + 1) * batch_size]
+            if gpu:
+                device = "cuda:" + str(gpu)
+                batch_x = batch_x.cuda()
+            recon = model_R(batch_x)
+            optimizer.zero_grad()
+            loss = model_R.loss_function(recon, batch_x)
+            pbar.set_postfix_str(
+                "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, loss.item()))
+            loss.backward()
+            optimizer.step()
+            pbar.update()
+
+        if iter * batch_size != R_trainset_size:
+            batch_x = R_train_set[iter * batch_size:]
+            if gpu:
+                batch_x = batch_x.cuda()
+            recon = model_R(batch_x)
+            optimizer.zero_grad()
+            loss = model_R.loss_function(recon, batch_x)
+            loss.backward()
+            optimizer.step()
+
+# train vae
 
 train_set = torch.Tensor(P_trainset_x[0])
 test_set = torch.Tensor(P_testset_x[0])
-print(train_set.shape)
-print(test_set.shape)
-
 input_size = train_set.shape[1]
-latent_size = args.latent
-train_set_size=train_set.shape[0]
+latent_size = latent
+train_set_size = train_set.shape[0]
 print(input_size)
 
-model = VAE(input_size,latent_size)
+model = VAE(input_size, latent_size)
 if gpu:
     model.cuda()
 
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-mse_loss=nn.MSELoss()
+mse_loss = nn.MSELoss()
 
 for epochs in range(epoch):
     if epochs % 10 == 0:
@@ -89,9 +145,9 @@ for epochs in range(epoch):
             recon, mu, log_std = model(batch_x)
             optimizer.zero_grad()
             loss = model.loss_function(recon, batch_x, mu, log_std)
-            recon_loss=mse_loss(recon,batch_x)
+            recon_loss = mse_loss(recon, batch_x)
             pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, loss.item()))
+                "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, recon_loss.item()))
             loss.backward()
             optimizer.step()
             pbar.update()
@@ -106,6 +162,7 @@ for epochs in range(epoch):
             loss.backward()
             optimizer.step()
             # pbar.set_postfix_str("epochs: %d train loss: %.6f test loss: -.------" % (epochs, loss.item()))
+
 # exit()
 
 

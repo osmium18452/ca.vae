@@ -107,18 +107,24 @@ class DataLoader:
 
         for i in self.P:
             self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array(parent_list[i] + [i])].transpose())
-            self.P_trainset_y.append(self.non_zero_data_train.transpose()[i].transpose())
+            # self.P_trainset_y.append(self.non_zero_data_train.transpose()[i].transpose())
             self.P_testset_x.append(self.non_zero_data_test.transpose()[np.array(parent_list[i] + [i])].transpose())
-            self.P_testset_y.append(self.non_zero_data_test.transpose()[i].transpose())
+            # self.P_testset_y.append(self.non_zero_data_test.transpose()[i].transpose())
             # print(parent_list[i])
             # print(self.non_zero_data_train.transpose()[np.array(parent_list[i])].transpose().shape)
         # print(np.shape(self.P_trainset_y))
 
-    def load_train_data(self):
-        return self.R_trainset_x, self.P_trainset_x
+    def load_train_data(self,univariate=True):
+        if univariate:
+            return self.R_trainset_x,self.R_trainset_y,self.P_trainset_x
+        else:
+            return self.R_trainset_x, self.P_trainset_x
 
-    def load_test_data(self):
-        return self.R_testset_x, self.P_testset_x
+    def load_test_data(self,univariate=True):
+        if univariate:
+            return self.R_testset_x,self.R_testset_y,self.P_testset_x
+        else:
+            return self.R_testset_x, self.P_testset_x
 
 
 if __name__ == '__main__':
