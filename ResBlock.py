@@ -15,9 +15,14 @@ class ResBlock(nn.Module):
                       bias=False),
             nn.BatchNorm1d(output_channel),
         )
+        self.upsample = nn.Sequential(
+            nn.Conv1d(in_channels=input_channel, out_channels=output_channel, kernel_size=1, stride=1, bias=False),
+            nn.BatchNorm1d(output_channel),
+        )
 
-    def forward(self,x):
-        out=self.block(x)
-        out+=x
-        out=F.relu(out)
+    def forward(self, x):
+        # print("<<<<<",x.shape)
+        out = self.block(x)
+        out += self.upsample(x)
+        out = F.relu(out)
         return out

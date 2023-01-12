@@ -15,6 +15,7 @@ import numpy as np
 from DataLoader import DataLoader
 from VAE import VAE
 from AE import AE
+from CNN import CNN
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
@@ -43,6 +44,7 @@ learning_rate = args.learning_rate
 epoch = args.epoch
 batch_size = args.batch
 univariate = not args.multivariate
+multivariate = args.multivariate
 window_size = args.window_size
 
 trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
@@ -65,55 +67,6 @@ else:
     R_testset_x, P_testset_x = dataloader.load_test_data(univariate=univariate)
 
 # print(R_trainset_x.shape, R_trainset_y.shape)
-
-R_train_set = torch.Tensor(R_trainset_x)
-R_test_set = torch.Tensor(R_testset_x)
-R_input_size = R_train_set.shape[1]
-R_latent_size = latent
-R_trainset_size=R_train_set.shape[0]
-
-print("???",R_trainset_x.shape)
-
-# train ae
-model_R = AE(R_input_size, R_latent_size)
-if gpu:
-    model_R.cuda()
-optimizer = optim.Adam(model_R.parameters(), lr=learning_rate)
-mse_loss = nn.MSELoss()
-
-for epochs in range(epoch):
-    if epochs % 10 == 0:
-        permutation = np.random.permutation(R_trainset_size)
-        R_train_set = R_train_set[permutation]
-
-    iter = R_trainset_size // batch_size
-    with tqdm(total=iter, ascii=True) as pbar:
-        pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
-        for i in range(iter):
-            batch_x = R_train_set[i * batch_size:(i + 1) * batch_size]
-            if gpu:
-                device = "cuda:" + str(gpu)
-                batch_x = batch_x.cuda()
-            recon = model_R(batch_x)
-            optimizer.zero_grad()
-            loss = model_R.loss_function(recon, batch_x)
-            pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, loss.item()))
-            loss.backward()
-            optimizer.step()
-            pbar.update()
-
-        if iter * batch_size != R_trainset_size:
-            batch_x = R_train_set[iter * batch_size:]
-            if gpu:
-                batch_x = batch_x.cuda()
-            recon = model_R(batch_x)
-            optimizer.zero_grad()
-            loss = model_R.loss_function(recon, batch_x)
-            loss.backward()
-            optimizer.step()
-
-# train vae
 
 train_set = torch.Tensor(P_trainset_x[0])
 test_set = torch.Tensor(P_testset_x[0])
@@ -162,6 +115,114 @@ for epochs in range(epoch):
             loss.backward()
             optimizer.step()
             # pbar.set_postfix_str("epochs: %d train loss: %.6f test loss: -.------" % (epochs, loss.item()))
+
+# train ae
+if multivariate:
+    R_train_set_x = torch.Tensor(R_trainset_x)
+    R_test_set_x = torch.Tensor(R_testset_x)
+    R_input_size = R_train_set_x.shape[1]
+    R_latent_size = latent
+    R_trainset_size = R_train_set_x.shape[0]
+
+    print("???", R_trainset_x.shape)
+
+    model_R = AE(R_input_size, R_latent_size)
+    if gpu:
+        model_R.cuda()
+    optimizer = optim.Adam(model_R.parameters(), lr=learning_rate)
+    mse_loss = nn.MSELoss()
+
+    for epochs in range(epoch):
+        if epochs % 10 == 0:
+            permutation = np.random.permutation(R_trainset_size)
+            R_train_set_x = R_train_set_x[permutation]
+
+        iter = R_trainset_size // batch_size
+        with tqdm(total=iter, ascii=True) as pbar:
+            pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
+            for i in range(iter):
+                batch_x = R_train_set_x[i * batch_size:(i + 1) * batch_size]
+                if gpu:
+                    device = "cuda:" + str(gpu)
+                    batch_x = batch_x.cuda()
+                recon = model_R(batch_x)
+                optimizer.zero_grad()
+                loss = model_R.loss_function(recon, batch_x)
+                pbar.set_postfix_str(
+                    "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, loss.item()))
+                loss.backward()
+                optimizer.step()
+                pbar.update()
+
+            if iter * batch_size != R_trainset_size:
+                batch_x = R_train_set_x[iter * batch_size:]
+                if gpu:
+                    batch_x = batch_x.cuda()
+                recon = model_R(batch_x)
+                optimizer.zero_grad()
+                loss = model_R.loss_function(recon, batch_x)
+                loss.backward()
+                optimizer.step()
+# train cnn
+else:
+    print(torch.Tensor(R_trainset_x[0]).shape)
+    R_train_set_x = torch.Tensor(R_trainset_x[0]).transpose(1,-1)
+    R_train_set_y = torch.Tensor(R_trainset_y[0])
+    R_test_set_x = torch.Tensor(R_testset_x[0]).transpose(1,-1)
+    R_test_set_y = torch.Tensor(R_testset_y[0])
+    R_input_size = R_train_set_x.shape[1]
+    R_latent_size = latent
+    R_trainset_size = R_train_set_x.shape[0]
+
+    print(R_train_set_x.shape, R_train_set_y.shape)
+
+    model_R = CNN(window_size)
+    if gpu:
+        model_R.cuda()
+    optimizer = optim.Adam(model_R.parameters(), lr=learning_rate)
+    mse_loss = nn.MSELoss()
+
+    for epochs in range(epoch):
+        if epochs % 10 == 0:
+            permutation = np.random.permutation(R_trainset_size)
+            R_train_set_x = R_train_set_x[permutation]
+            R_train_set_y = R_train_set_y[permutation]
+
+        iter = R_trainset_size // batch_size
+        with tqdm(total=iter, ascii=True) as pbar:
+            pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
+            for i in range(iter):
+                batch_x = R_train_set_x[i * batch_size:(i + 1) * batch_size]
+                batch_y = R_train_set_y[i * batch_size:(i + 1) * batch_size]
+                if gpu:
+                    device = "cuda:" + str(gpu)
+                    batch_x = batch_x.cuda()
+                    batch_y =batch_y.cuda()
+                # print("batchxshape",batch_x.shape)
+                recon = model_R(batch_x)
+                optimizer.zero_grad()
+                loss = model_R.loss_function(recon, batch_y)
+                pbar.set_postfix_str(
+                    "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, loss.item()))
+                loss.backward()
+                optimizer.step()
+                pbar.update()
+
+            if iter * batch_size != R_trainset_size:
+                batch_x = R_train_set_x[iter * batch_size:]
+                batch_y = R_train_set_y[iter * batch_size:]
+                if gpu:
+                    batch_x = batch_x.cuda()
+                    batch_y = batch_y.cuda()
+                recon = model_R(batch_x)
+                optimizer.zero_grad()
+                loss = model_R.loss_function(recon, batch_y)
+                loss.backward()
+                optimizer.step()
+
+# train vae
+
+
 
 # exit()
 

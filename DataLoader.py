@@ -59,7 +59,7 @@ class DataLoader:
 
     def prepare_ad_data(self, graph, univariate=True, temporal=False, window_size=20):
         parent_list = self.get_parents(graph)
-        self.parent_list=parent_list
+        self.parent_list = parent_list
         self.R = []
         self.P = []
         for (i, node) in enumerate(parent_list):
@@ -79,12 +79,13 @@ class DataLoader:
             for (i, index) in enumerate(self.R):
                 for j in range(X_train.shape[-1] - window_size - 1):
                     self.R_trainset_x[i].append(X_train[index][j:j + window_size])
-                    self.R_trainset_y[i].append(X_train[index][j + window_size])
+                    self.R_trainset_y[i].append([X_train[index][j + window_size]])
                     self.R_testset_x[i].append(X_test[index][j:j + window_size])
-                    self.R_testset_y[i].append(X_test[index][j + window_size])
+                    self.R_testset_y[i].append([X_test[index][j + window_size]])
 
-            self.R_trainset_x = np.array(self.R_trainset_x)  # [variate_index, sample_number, window_size]
-            self.R_trainset_y = np.array(self.R_trainset_y)  # [variate_index, ground_truth]
+            self.R_trainset_x = np.expand_dims(np.array(self.R_trainset_x),
+                                               -1)  # [variate_index, sample_number, window_size,channel=1]
+            self.R_trainset_y = np.array(self.R_trainset_y)  # [variate_index, ground_truth,1]
             self.R_testset_x = np.array(self.R_testset_x)
             self.R_testset_y = np.array(self.R_testset_y)
             # print(self.R_trainset_x.shape, self.R_trainset_y.shape)
@@ -114,15 +115,15 @@ class DataLoader:
             # print(self.non_zero_data_train.transpose()[np.array(parent_list[i])].transpose().shape)
         # print(np.shape(self.P_trainset_y))
 
-    def load_train_data(self,univariate=True):
+    def load_train_data(self, univariate=True):
         if univariate:
-            return self.R_trainset_x,self.R_trainset_y,self.P_trainset_x
+            return self.R_trainset_x, self.R_trainset_y, self.P_trainset_x
         else:
             return self.R_trainset_x, self.P_trainset_x
 
-    def load_test_data(self,univariate=True):
+    def load_test_data(self, univariate=True):
         if univariate:
-            return self.R_testset_x,self.R_testset_y,self.P_testset_x
+            return self.R_testset_x, self.R_testset_y, self.P_testset_x
         else:
             return self.R_testset_x, self.P_testset_x
 
