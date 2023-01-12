@@ -101,15 +101,15 @@ class DataLoader:
                 print(self.R_trainset_x.shape)
 
         # data for P
-        self.P_trainset_x = []  # [variate_num,sample_number,parent_number]
+        self.P_trainset_x = []  # [variate_num,sample_number,parent_number] the first is the child.
         self.P_trainset_y = []  # [variate_num,sample_number]
         self.P_testset_x = []
         self.P_testset_y = []
 
         for i in self.P:
-            self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array(parent_list[i] + [i])].transpose())
+            self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array([i] + parent_list[i])].transpose())
             # self.P_trainset_y.append(self.non_zero_data_train.transpose()[i].transpose())
-            self.P_testset_x.append(self.non_zero_data_test.transpose()[np.array(parent_list[i] + [i])].transpose())
+            self.P_testset_x.append(self.non_zero_data_test.transpose()[np.array([i] + parent_list[i])].transpose())
             # self.P_testset_y.append(self.non_zero_data_test.transpose()[i].transpose())
             # print(parent_list[i])
             # print(self.non_zero_data_train.transpose()[np.array(parent_list[i])].transpose().shape)
@@ -117,6 +117,7 @@ class DataLoader:
 
     def load_train_data(self, univariate=True):
         if univariate:
+            print(self.P_trainset_x[0].dtype, "load")
             return self.R_trainset_x, self.R_trainset_y, self.P_trainset_x
         else:
             return self.R_trainset_x, self.P_trainset_x
@@ -126,6 +127,31 @@ class DataLoader:
             return self.R_testset_x, self.R_testset_y, self.P_testset_x
         else:
             return self.R_testset_x, self.P_testset_x
+
+    def load_P_input_len_list(self):
+        p = []
+        for i in self.parent_list:
+            if len(i) > 0:
+                p.append(len(i) + 1)
+        return p
+
+    def load_infernocus_train_data_P(self):
+        tmp_list = [i for i in self.P_trainset_x]
+        # print(self.P_trainset_x[0].dtype,"dl ")
+        P_trainset_tmp = np.concatenate((tuple(tmp_list)), axis=1)
+        return P_trainset_tmp
+
+    def load_infernocus_test_data_P(self):
+        tmp_list = [i for i in self.P_testset_x]
+        # print(self.P_testset_x[0].dtype,"dl ")
+        P_testset_tmp = np.concatenate((tuple(tmp_list)), axis=1)
+        return P_testset_tmp
+
+    def load_cnn_train_data(self):
+        return self.R_trainset_x,self.R_trainset_y
+
+    def load_cnn_test_data(self):
+        return self.R_testset_x,self.R_testset_y
 
 
 if __name__ == '__main__':

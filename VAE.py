@@ -40,6 +40,7 @@ class VAE(nn.Module):
         # self.fc4 = nn.Linear(200, input_size)
 
     def encode(self, x):
+        # print("encoder",x.shape,x.dtype)
         h1 = self.encoder(x)
         mean = self.encoder_mean(h1)
         log_std = self.encoder_log_std(h1)
@@ -70,7 +71,7 @@ class VAE(nn.Module):
         return recon, mu, log_std
 
     def loss_function(self, recon, x, mu, log_std) -> torch.Tensor:
-        recon_loss = F.mse_loss(recon, x, reduction="mean")  # use "mean" may have a bad effect on gradients
+        recon_loss = F.mse_loss(recon, x, reduction="sum")  # use "mean" may have a bad effect on gradients
         kl_loss = -0.5 * (1 + 2 * log_std - mu.pow(2) - torch.exp(2 * log_std))
         kl_loss = torch.sum(kl_loss)
         loss = recon_loss + kl_loss
