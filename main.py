@@ -19,6 +19,11 @@ from AE import AE
 from CNN import CNN
 from tqdm import tqdm
 
+# with open("ServerMachineDataset/test/pkl/machine-1-1.pkl","rb") as f:
+#     data=pickle.load(f)
+# print(data.shape)
+# exit()
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--num_train_samples", default=-1, type=int)
 parser.add_argument("-s", "--save_name", default="result.pkl", type=str)
@@ -28,7 +33,7 @@ parser.add_argument("--show", action="store_true")
 parser.add_argument("--latent", default=5, type=int)
 parser.add_argument("--gpu", action="store_true")
 parser.add_argument("-r", "--learning_rate", default=0.001, type=float)
-parser.add_argument("-e", "--epoch", default=80, type=int)
+parser.add_argument("-e", "--epoch", default=10, type=int)
 parser.add_argument("-b", "--batch", default=1024, type=int)
 parser.add_argument("-m", "--multivariate", action="store_true")
 parser.add_argument("-w", "--window_size", default=20, type=int)
@@ -67,12 +72,12 @@ with open("save/machine.1.1.pkl", "rb") as f:
 # print(Record['G'].graph)
 # print(Record['G'])
 dataloader.prepare_ad_data(Record['G'].graph, univariate=univariate, window_size=window_size)
-if univariate:
-    R_trainset_x, R_trainset_y, P_trainset_x = dataloader.load_train_data(univariate=univariate)
-    R_testset_x, R_testset_y, P_testset_x = dataloader.load_test_data(univariate=univariate)
-else:
-    R_trainset_x, P_trainset_x = dataloader.load_train_data(univariate=univariate)
-    R_testset_x, P_testset_x = dataloader.load_test_data(univariate=univariate)
+# if univariate:
+#     R_trainset_x, R_trainset_y, P_trainset_x = dataloader.load_train_data(univariate=univariate)
+#     R_testset_x, R_testset_y, P_testset_x = dataloader.load_test_data(univariate=univariate)
+# else:
+#     R_trainset_x, P_trainset_x = dataloader.load_train_data(univariate=univariate)
+#     R_testset_x, P_testset_x = dataloader.load_test_data(univariate=univariate)
 
 # train infernocusVAE
 '''infernocus_input_list=dataloader.load_P_input_len_list()
@@ -126,6 +131,8 @@ for epochs in range(epoch):
 # print(np.sum(infernocus_input_list))
 # print("loss",loss.shape)
 # exit()'''
+
+
 
 print("""train a lot of cnns""")
 train_set_x, train_set_y = dataloader.load_cnn_train_data()
@@ -260,10 +267,80 @@ for epochs in range(epoch):
                 loss.backward()
                 optimizer_list[j].step()
 
+# test phase cnn
+
+test_set_x,test_set_y = dataloader.load_cnn_test_data()
+print("test set", test_set_x.shape)
+test_set_x=torch.Tensor(test_set_x).transpose(-1, -2)
+test_set_size=test_set_y.shape[1]
+cnn_recon_list=[[] for i in range(cnn_num)]
+iter = test_set_size // batch_size
+with tqdm(total=iter, ascii=True) as pbar:
+    for i in range(iter):
+        big_batch_x = test_set_x[:, i * batch_size:(i + 1) * batch_size]
+        for j in range(cnn_num):
+            batch_x = big_batch_x[j]
+            if gpu:
+                device = "cuda:" + str(gpu)
+                batch_x = batch_x.cuda()
+            cnn_list[j].eval()
+            recon = cnn_list[j](batch_x)
+            recon=recon.cpu()
+            cnn_recon_list[j].append(recon.detach().numpy())
+        pbar.update()
+
+    if iter * batch_size != test_set_size:
+        big_batch_x = test_set_x[:, iter * batch_size:]
+        for j in range(cnn_num):
+            batch_x = big_batch_x[j]
+            if gpu:
+                batch_x = batch_x.cuda()
+            cnn_list[j].eval()
+            recon = cnn_list[j](batch_x)
+            recon=recon.cpu()
+            cnn_recon_list[j].append(recon.detach().numpy())
+
+
+# test phase vae
+test_set_x=torch.Tensor(dataloader.load_infernocus_test_data_P())
+test_set_size=test_set_x.shape[0]
+vae_recon_list=[[] for i in range(vae_num)]
+iter = train_set_size // batch_size
+with tqdm(total=iter, ascii=True) as pbar:
+    for i in range(iter):
+        big_batch_x = test_set_x[i * batch_size:(i + 1) * batch_size]
+        for j in range(vae_num):
+            batch_x = big_batch_x[:, slice_list[j]:slice_list[j + 1]]
+            if gpu:
+                device = "cuda:" + str(gpu)
+                batch_x = batch_x.cuda()
+            recon, mu, log_std = vae_list[j](batch_x)
+            recon=recon.cpu()
+            # print(recon.shape)
+            vae_recon_list[j].append(recon.detach().numpy()[:,0])
+        pbar.update()
+
+    if iter * batch_size != train_set_size:
+        big_batch_x = train_set[iter * batch_size:]
+        for j in range(vae_num):
+            batch_x = big_batch_x[:, slice_list[j]:slice_list[j + 1]]
+            if gpu:
+                batch_x = batch_x.cuda()
+            recon, mu, log_std = vae_list[j](batch_x)
+            recon=recon.cpu()
+            vae_recon_list[j].append(recon.detach().numpy()[:,0])
+
+for i in range(cnn_num):
+    cnn_recon_list[i]=np.concatenate(cnn_recon_list[i])
+cnn_recon_list=np.array(cnn_recon_list)
+for i in range(vae_num):
+    vae_recon_list[i]=np.concatenate(vae_recon_list[i])
+vae_recon_list=np.array(vae_recon_list).squeeze()
+print(cnn_recon_list.shape,vae_recon_list.shape)
 exit()
 
 # train vae
-
+'''
 train_set = torch.Tensor(P_trainset_x[0])
 test_set = torch.Tensor(P_testset_x[0])
 input_size = train_set.shape[1]
@@ -414,7 +491,7 @@ else:
                 optimizer.zero_grad()
                 loss = model_R.loss_function(recon, batch_y)
                 loss.backward()
-                optimizer.step()
+                optimizer.step()'''
 
 # train vae
 

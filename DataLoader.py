@@ -11,7 +11,7 @@ import os
 
 
 class DataLoader:
-    def __init__(self, trainset_filename, testset_filename, testset_gt_filename, n_variate=-1, n_samples=-1):
+    def __init__(self, trainset_filename, testset_filename, testset_gt_filename, n_variate=None, n_samples=None):
         f = open(trainset_filename, "rb")
         self.train_data = np.array(pickle.load(f))
         print("...", self.train_data.shape)
@@ -82,11 +82,13 @@ class DataLoader:
                     self.R_trainset_y[i].append([X_train[index][j + window_size]])
                     self.R_testset_x[i].append(X_test[index][j:j + window_size])
                     self.R_testset_y[i].append([X_test[index][j + window_size]])
+            print(X_train.shape[-1] - window_size - 1, X_train.shape[-1], len(self.R_testset_x[1]),
+                  len(self.R_trainset_x[1]), "hahahaha")
 
             self.R_trainset_x = np.expand_dims(np.array(self.R_trainset_x),
                                                -1)  # [variate_index, sample_number, window_size,channel=1]
             self.R_trainset_y = np.array(self.R_trainset_y)  # [variate_index, ground_truth,1]
-            self.R_testset_x = np.array(self.R_testset_x)
+            self.R_testset_x = np.expand_dims(np.array(self.R_testset_x), -1)
             self.R_testset_y = np.array(self.R_testset_y)
             # print(self.R_trainset_x.shape, self.R_trainset_y.shape)
             # print(self.R_testset_x.shape, self.R_testset_y.shape)
@@ -148,10 +150,10 @@ class DataLoader:
         return P_testset_tmp
 
     def load_cnn_train_data(self):
-        return self.R_trainset_x,self.R_trainset_y
+        return self.R_trainset_x, self.R_trainset_y
 
     def load_cnn_test_data(self):
-        return self.R_testset_x,self.R_testset_y
+        return self.R_testset_x, self.R_testset_y
 
 
 if __name__ == '__main__':
