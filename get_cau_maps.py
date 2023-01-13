@@ -26,7 +26,7 @@ for root,path_list,files in os.walk("ServerMachineDataset/train/pkl"):
         non_zero_data_train = train_data.transpose()[non_zero_variate].transpose()
         print(non_zero_data_train.shape)
 
-        X=non_zero_data_train[:,:5]
+        X=non_zero_data_train
         Record = ges(X, maxP=5)
 
         f=open(os.path.join('save/maps',file[:-3]+'camap.pkl'),'wb')
