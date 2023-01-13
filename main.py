@@ -32,6 +32,7 @@ parser.add_argument("-e", "--epoch", default=80, type=int)
 parser.add_argument("-b", "--batch", default=1024, type=int)
 parser.add_argument("-m", "--multivariate", action="store_true")
 parser.add_argument("-w", "--window_size", default=20, type=int)
+parser.add_argument("-g", "--gpu_device", default="0", type=str)
 args = parser.parse_args()
 
 num_train_samples = args.num_train_samples
@@ -47,12 +48,18 @@ batch_size = args.batch
 univariate = not args.multivariate
 multivariate = args.multivariate
 window_size = args.window_size
+gpu_device=args.gpu_device
+
+if gpu:
+    os.environ['CUDA_VISIBLE_DEVICES']=gpu_device
 
 trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
 testset_filename = "ServerMachineDataset/test/pkl/machine-1-1.pkl"
 testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-1-1.pkl"
 dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=variates)
 X = dataloader.load_causal_data()
+# print(X.shape)
+# exit()
 # Record = ges(X, maxP=5)
 with open("save/machine.1.1.pkl", "rb") as f:
     #     pickle.dump(Record,f)
