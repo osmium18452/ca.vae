@@ -1,5 +1,6 @@
 import argparse
 
+import numpy
 import torch
 from torch import nn, optim
 from causallearn.search.ScoreBased.GES import ges
@@ -270,6 +271,7 @@ for epochs in range(epoch):
 # test phase cnn
 
 test_set_x,test_set_y = dataloader.load_cnn_test_data()
+cnn_ground_truth=test_set_y.squeeze().transpose()
 print("test set", test_set_x.shape)
 test_set_x=torch.Tensor(test_set_x).transpose(-1, -2)
 test_set_size=test_set_y.shape[1]
@@ -303,6 +305,7 @@ with tqdm(total=iter, ascii=True) as pbar:
 
 # test phase vae
 test_set_x=torch.Tensor(dataloader.load_infernocus_test_data_P())
+vae_ground_truth=test_set_x[:,slice_list[:-1]].numpy()[window_size+1:]
 test_set_size=test_set_x.shape[0]
 vae_recon_list=[[] for i in range(vae_num)]
 iter = train_set_size // batch_size
@@ -332,11 +335,17 @@ with tqdm(total=iter, ascii=True) as pbar:
 
 for i in range(cnn_num):
     cnn_recon_list[i]=np.concatenate(cnn_recon_list[i])
-cnn_recon_list=np.array(cnn_recon_list)
+cnn_recon_list=np.array(cnn_recon_list).squeeze().transpose()
 for i in range(vae_num):
     vae_recon_list[i]=np.concatenate(vae_recon_list[i])
-vae_recon_list=np.array(vae_recon_list).squeeze()
+vae_recon_list=np.array(vae_recon_list).squeeze().transpose()[window_size+1:]
 print(cnn_recon_list.shape,vae_recon_list.shape)
+print(cnn_ground_truth.shape,vae_ground_truth.shape)
+vae_abnormal_score_list=numpy.absolute(vae_recon_list-vae_ground_truth)
+cnn_abnormal_score_list=numpy.absolute(cnn_recon_list-cnn_ground_truth)
+sample_abnormal_score_list=numpy.concatenate((cnn_abnormal_score_list,vae_abnormal_score_list),axis=1)
+sample_abnormal_score_list=numpy.max(sample_abnormal_score_list,axis=1)
+print(sample_abnormal_score_list)
 exit()
 
 # train vae
