@@ -20,6 +20,7 @@ class DataLoader:
 
         f = open(testset_filename, "rb")
         self.test_data = np.array(pickle.load(f))
+        print('... test data',self.test_data.shape)
         f.close()
         self.test_data = self.test_data[:n_samples, :n_variate]
 
@@ -33,6 +34,8 @@ class DataLoader:
 
         self.non_zero_data_train = self.train_data.transpose()[self.non_zero_variate].transpose()
         self.non_zero_data_test = self.test_data.transpose()[self.non_zero_variate].transpose()
+        print('non zero data test',self.non_zero_data_test.shape)
+        print('non zero data train',self.non_zero_data_train.shape)
 
     def load_causal_data(self):
         return self.non_zero_data_train
@@ -80,6 +83,7 @@ class DataLoader:
                 for j in range(X_train.shape[-1] - window_size - 1):
                     self.R_trainset_x[i].append(X_train[index][j:j + window_size])
                     self.R_trainset_y[i].append([X_train[index][j + window_size]])
+                for j in range(X_test.shape[-1]-window_size-1):
                     self.R_testset_x[i].append(X_test[index][j:j + window_size])
                     self.R_testset_y[i].append([X_test[index][j + window_size]])
             print(X_train.shape[-1] - window_size - 1, X_train.shape[-1], len(self.R_testset_x[1]),
@@ -107,6 +111,7 @@ class DataLoader:
         self.P_trainset_y = []  # [variate_num,sample_number]
         self.P_testset_x = []
         self.P_testset_y = []
+        print("non zero data test 2",self.non_zero_data_test.shape)
 
         for i in self.P:
             self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array([i] + parent_list[i])].transpose())
@@ -145,6 +150,7 @@ class DataLoader:
 
     def load_infernocus_test_data_P(self):
         tmp_list = [i for i in self.P_testset_x]
+        # print('tmp list',self.P_testset_x.shape)
         # print(self.P_testset_x[0].dtype,"dl ")
         P_testset_tmp = np.concatenate((tuple(tmp_list)), axis=1)
         return P_testset_tmp

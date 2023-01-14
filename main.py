@@ -39,6 +39,8 @@ parser.add_argument("-b", "--batch", default=1024, type=int)
 parser.add_argument("-m", "--multivariate", action="store_true")
 parser.add_argument("-w", "--window_size", default=20, type=int)
 parser.add_argument("-g", "--gpu_device", default="0", type=str)
+parser.add_argument('--cnn_lr', default=0.0001, type=float)
+parser.add_argument('--vae_lr', default=0.001, type=float)
 args = parser.parse_args()
 
 num_train_samples = args.num_train_samples
@@ -54,10 +56,12 @@ batch_size = args.batch
 univariate = not args.multivariate
 multivariate = args.multivariate
 window_size = args.window_size
-gpu_device=args.gpu_device
+gpu_device = args.gpu_device
+cnn_lr = args.cnn_lr
+vae_lr = args.vae_lr
 
 if gpu:
-    os.environ['CUDA_VISIBLE_DEVICES']=gpu_device
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
 
 trainset_filename = "ServerMachineDataset/train/pkl/machine-2-1.pkl"
 testset_filename = "ServerMachineDataset/test/pkl/machine-2-1.pkl"
@@ -133,8 +137,6 @@ for epochs in range(epoch):
 # print("loss",loss.shape)
 # exit()'''
 
-
-
 print("""train a lot of cnns""")
 train_set_x, train_set_y = dataloader.load_cnn_train_data()
 train_set_x = torch.Tensor(train_set_x).transpose(-1, -2)
@@ -150,7 +152,7 @@ for i in range(cnn_num):
     cnn_list.append(CNN(window_size))
     if gpu:
         cnn_list[-1].cuda()
-    cnn_optimizer_list.append(optim.Adam(cnn_list[-1].parameters(), lr=learning_rate))
+    cnn_optimizer_list.append(optim.Adam(cnn_list[-1].parameters(), lr=cnn_lr))
 
 mse_loss = nn.MSELoss()
 
@@ -164,7 +166,7 @@ for epochs in range(epoch):
 
     iter = train_set_size // batch_size
     with tqdm(total=iter, ascii=True) as pbar:
-        pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
+        pbar.set_postfix_str("epochs: --- train loss: -.-----e---")
         for i in range(iter):
             big_batch_x = train_set_x[:, i * batch_size:(i + 1) * batch_size]
             big_batch_y = train_set_y[:, i * batch_size:(i + 1) * batch_size]
@@ -189,7 +191,7 @@ for epochs in range(epoch):
                 cnn_optimizer_list[j].step()
             mse /= cnn_num
             pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.2e test loss: -.------" % (epochs + 1, epoch, mse))
+                "epochs: %d/%d train loss: %.5e" % (epochs + 1, epoch, mse))
             pbar.update()
 
         if iter * batch_size != train_set_size:
@@ -225,7 +227,7 @@ for i in range(vae_num):
     vae_list.append(VAE(input_size=input_size_list[i], latent_size=latent))
     if gpu:
         vae_list[-1].cuda()
-    optimizer_list.append(optim.Adam(vae_list[-1].parameters(), lr=learning_rate))
+    optimizer_list.append(optim.Adam(vae_list[-1].parameters(), lr=vae_lr))
 
 mse_loss = nn.MSELoss()
 
@@ -236,7 +238,7 @@ for epochs in range(epoch):
 
     iter = train_set_size // batch_size
     with tqdm(total=iter, ascii=True) as pbar:
-        pbar.set_postfix_str("epochs: --- train loss: -.------ test loss: -.------")
+        pbar.set_postfix_str("epochs: --- train loss: -.-----e---")
         for i in range(iter):
             big_batch_x = train_set[i * batch_size:(i + 1) * batch_size]
             mse = 0.
@@ -253,7 +255,7 @@ for epochs in range(epoch):
                 optimizer_list[j].step()
             mse /= vae_num
             pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.6f test loss: -.------" % (epochs + 1, epoch, mse))
+                "epochs: %d/%d train loss: %.5e" % (epochs + 1, epoch, mse))
             pbar.update()
 
         if iter * batch_size != train_set_size:
@@ -270,12 +272,12 @@ for epochs in range(epoch):
 
 # test phase cnn
 
-test_set_x,test_set_y = dataloader.load_cnn_test_data()
-cnn_ground_truth=test_set_y.squeeze().transpose()
+test_set_x, test_set_y = dataloader.load_cnn_test_data()
+cnn_ground_truth = test_set_y.squeeze().transpose()
 print("test set", test_set_x.shape)
-test_set_x=torch.Tensor(test_set_x).transpose(-1, -2)
-test_set_size=test_set_y.shape[1]
-cnn_recon_list=[[] for i in range(cnn_num)]
+test_set_x = torch.Tensor(test_set_x).transpose(-1, -2)
+test_set_size = test_set_y.shape[1]
+cnn_recon_list = [[] for i in range(cnn_num)]
 iter = test_set_size // batch_size
 with tqdm(total=iter, ascii=True) as pbar:
     for i in range(iter):
@@ -287,7 +289,7 @@ with tqdm(total=iter, ascii=True) as pbar:
                 batch_x = batch_x.cuda()
             cnn_list[j].eval()
             recon = cnn_list[j](batch_x)
-            recon=recon.cpu()
+            recon = recon.cpu()
             cnn_recon_list[j].append(recon.detach().numpy())
         pbar.update()
 
@@ -299,16 +301,17 @@ with tqdm(total=iter, ascii=True) as pbar:
                 batch_x = batch_x.cuda()
             cnn_list[j].eval()
             recon = cnn_list[j](batch_x)
-            recon=recon.cpu()
+            recon = recon.cpu()
             cnn_recon_list[j].append(recon.detach().numpy())
 
-
 # test phase vae
-test_set_x=torch.Tensor(dataloader.load_infernocus_test_data_P())
-vae_ground_truth=test_set_x[:,slice_list[:-1]].numpy()[window_size+1:]
-test_set_size=test_set_x.shape[0]
-vae_recon_list=[[] for i in range(vae_num)]
-iter = train_set_size // batch_size
+test_set_x = torch.Tensor(dataloader.load_infernocus_test_data_P())
+print('vae test set', test_set_x.shape)
+vae_ground_truth = test_set_x[:, slice_list[:-1]].numpy()[window_size + 1:]
+test_set_size = test_set_x.shape[0]
+vae_recon_list = [[] for i in range(vae_num)]
+test_set_size = test_set_x.shape[0]
+iter = test_set_size // batch_size
 with tqdm(total=iter, ascii=True) as pbar:
     for i in range(iter):
         big_batch_x = test_set_x[i * batch_size:(i + 1) * batch_size]
@@ -318,34 +321,53 @@ with tqdm(total=iter, ascii=True) as pbar:
                 device = "cuda:" + str(gpu)
                 batch_x = batch_x.cuda()
             recon, mu, log_std = vae_list[j](batch_x)
-            recon=recon.cpu()
+            recon = recon.cpu()
             # print(recon.shape)
-            vae_recon_list[j].append(recon.detach().numpy()[:,0])
+            vae_recon_list[j].append(recon.detach().numpy()[:, 0])
         pbar.update()
 
-    if iter * batch_size != train_set_size:
-        big_batch_x = train_set[iter * batch_size:]
+    if iter * batch_size != test_set_size:
+        big_batch_x = test_set_x[iter * batch_size:]
         for j in range(vae_num):
             batch_x = big_batch_x[:, slice_list[j]:slice_list[j + 1]]
             if gpu:
                 batch_x = batch_x.cuda()
             recon, mu, log_std = vae_list[j](batch_x)
-            recon=recon.cpu()
-            vae_recon_list[j].append(recon.detach().numpy()[:,0])
+            recon = recon.cpu()
+            vae_recon_list[j].append(recon.detach().numpy()[:, 0])
 
 for i in range(cnn_num):
-    cnn_recon_list[i]=np.concatenate(cnn_recon_list[i])
-cnn_recon_list=np.array(cnn_recon_list).squeeze().transpose()
+    cnn_recon_list[i] = np.concatenate(cnn_recon_list[i])
+cnn_recon_list = np.array(cnn_recon_list).squeeze().transpose()
 for i in range(vae_num):
-    vae_recon_list[i]=np.concatenate(vae_recon_list[i])
-vae_recon_list=np.array(vae_recon_list).squeeze().transpose()[window_size+1:]
-print(cnn_recon_list.shape,vae_recon_list.shape)
-print(cnn_ground_truth.shape,vae_ground_truth.shape)
-vae_abnormal_score_list=numpy.absolute(vae_recon_list-vae_ground_truth)
-cnn_abnormal_score_list=numpy.absolute(cnn_recon_list-cnn_ground_truth)
-sample_abnormal_score_list=numpy.concatenate((cnn_abnormal_score_list,vae_abnormal_score_list),axis=1)
-sample_abnormal_score_list=numpy.max(sample_abnormal_score_list,axis=1)
-print(sample_abnormal_score_list)
+    vae_recon_list[i] = np.concatenate(vae_recon_list[i])
+vae_recon_list = np.array(vae_recon_list).squeeze().transpose()[window_size + 1:]
+print(cnn_recon_list.shape, vae_recon_list.shape)
+print(cnn_ground_truth.shape, vae_ground_truth.shape)
+print("test set x", test_set_x.shape)
+ground_truth = np.concatenate((cnn_ground_truth, vae_ground_truth), axis=1)
+abnormal_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
+esp = 1e-30
+score_list = np.absolute(ground_truth - abnormal_list)
+score_list_percent = np.absolute(ground_truth - abnormal_list) / (ground_truth + esp)
+print(score_list_percent)
+f = open("resultpercent.csv", "w")
+for i in score_list_percent:
+    for j in i:
+        print(j, end=',', file=f)
+    print(' ', file=f)
+f.close()
+f = open("result.csv", "w")
+for i in score_list:
+    for j in i:
+        print(j, end=',', file=f)
+    print(' ', file=f)
+f.close()
+# vae_abnormal_score_list = numpy.absolute(vae_recon_list - vae_ground_truth) / vae_ground_truth
+# cnn_abnormal_score_list = numpy.absolute(cnn_recon_list - cnn_ground_truth) / cnn_ground_truth
+# sample_abnormal_score_list = numpy.concatenate((cnn_abnormal_score_list, vae_abnormal_score_list), axis=1)
+# sample_abnormal_score_list = numpy.max(sample_abnormal_score_list, axis=1)
+# print(sample_abnormal_score_list)
 exit()
 
 # train vae
