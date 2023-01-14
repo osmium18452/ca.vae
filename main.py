@@ -346,10 +346,10 @@ print(cnn_recon_list.shape, vae_recon_list.shape)
 print(cnn_ground_truth.shape, vae_ground_truth.shape)
 print("test set x", test_set_x.shape)
 ground_truth = np.concatenate((cnn_ground_truth, vae_ground_truth), axis=1)
-abnormal_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
+reconstruction_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
 esp = 1e-30
-score_list = np.absolute(ground_truth - abnormal_list)
-score_list_percent = np.absolute(ground_truth - abnormal_list) / (ground_truth + esp)
+score_list = np.absolute(ground_truth - reconstruction_list)
+score_list_percent = np.absolute(ground_truth - reconstruction_list) / (ground_truth + esp)
 print(score_list_percent)
 f = open("resultpercent.csv", "w")
 for i in score_list_percent:
@@ -358,7 +358,7 @@ for i in score_list_percent:
     print(' ', file=f)
 f.close()
 f = open("result.csv", "w")
-for i in score_list:
+for i in reconstruction_list:
     for j in i:
         print(j, end=',', file=f)
     print(' ', file=f)
