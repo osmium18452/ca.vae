@@ -59,15 +59,15 @@ gpu_device=args.gpu_device
 if gpu:
     os.environ['CUDA_VISIBLE_DEVICES']=gpu_device
 
-trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
-testset_filename = "ServerMachineDataset/test/pkl/machine-1-1.pkl"
-testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-1-1.pkl"
+trainset_filename = "ServerMachineDataset/train/pkl/machine-2-1.pkl"
+testset_filename = "ServerMachineDataset/test/pkl/machine-2-1.pkl"
+testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-2-1.pkl"
 dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=variates)
 X = dataloader.load_causal_data()
 # print(X.shape)
 # exit()
 # Record = ges(X, maxP=5)
-with open("save/machine.1.1.pkl", "rb") as f:
+with open("save/machine-2-1.camap.pkl", "rb") as f:
     #     pickle.dump(Record,f)
     Record = pickle.load(f)
 # print(Record['G'].graph)
