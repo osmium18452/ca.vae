@@ -363,6 +363,13 @@ for i in score_list:
         print(j, end=',', file=f)
     print(' ', file=f)
 f.close()
+f = open("gt.csv", "w")
+for i in ground_truth:
+    for j in i:
+        print(j, end=',', file=f)
+    print(' ', file=f)
+f.close()
+
 # vae_abnormal_score_list = numpy.absolute(vae_recon_list - vae_ground_truth) / vae_ground_truth
 # cnn_abnormal_score_list = numpy.absolute(cnn_recon_list - cnn_ground_truth) / cnn_ground_truth
 # sample_abnormal_score_list = numpy.concatenate((cnn_abnormal_score_list, vae_abnormal_score_list), axis=1)
