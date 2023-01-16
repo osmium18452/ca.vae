@@ -9,23 +9,30 @@ class AE(nn.Module):
         decoder_hidden_size=[5,10,25]
         self.encoder=nn.Sequential(
             nn.Linear(input_size,encoder_hidden_size[0]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(encoder_hidden_size[0],encoder_hidden_size[1]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(encoder_hidden_size[1],encoder_hidden_size[2]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(encoder_hidden_size[2],latent_size),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
         )
         self.decoder = nn.Sequential(
             nn.Linear(latent_size, decoder_hidden_size[0]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(decoder_hidden_size[0], decoder_hidden_size[1]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(decoder_hidden_size[1], decoder_hidden_size[2]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(decoder_hidden_size[2], input_size),
-            nn.ReLU(),
+            nn.Tanh(),
         )
 
     def forward(self,x):

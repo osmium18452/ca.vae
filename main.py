@@ -41,6 +41,7 @@ parser.add_argument("-w", "--window_size", default=20, type=int)
 parser.add_argument("-g", "--gpu_device", default="0", type=str)
 parser.add_argument('--cnn_lr', default=0.0001, type=float)
 parser.add_argument('--vae_lr', default=0.001, type=float)
+parser.add_argument('-N', '--normalize_data', action='store_true')
 args = parser.parse_args()
 
 num_train_samples = args.num_train_samples
@@ -59,6 +60,7 @@ window_size = args.window_size
 gpu_device = args.gpu_device
 cnn_lr = args.cnn_lr
 vae_lr = args.vae_lr
+normalize_data = args.normalize_data
 
 if gpu:
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
@@ -66,7 +68,8 @@ if gpu:
 trainset_filename = "ServerMachineDataset/train/pkl/machine-2-1.pkl"
 testset_filename = "ServerMachineDataset/test/pkl/machine-2-1.pkl"
 testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-2-1.pkl"
-dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=variates)
+dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=variates,
+                        data_normalization=normalize_data)
 X = dataloader.load_causal_data()
 # print(X.shape)
 # exit()
@@ -347,9 +350,15 @@ print(cnn_ground_truth.shape, vae_ground_truth.shape)
 print("test set x", test_set_x.shape)
 ground_truth = np.concatenate((cnn_ground_truth, vae_ground_truth), axis=1)
 reconstruction_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
+if normalize_data:
+    devation,mean=dataloader.load_std_and_mean()
+    ground_truth=ground_truth*devation+mean
+    reconstruction_list=reconstruction_list*devation+mean
+
+print("R&P:",dataloader.R,dataloader.P)
 esp = 1e-30
 score_list = np.absolute(ground_truth - reconstruction_list)
-score_list_percent = np.absolute(ground_truth - reconstruction_list) / (ground_truth + esp)
+score_list_percent = np.absolute((ground_truth - reconstruction_list) / (ground_truth + esp))
 print(score_list_percent)
 f = open("resultpercent.csv", "w")
 for i in score_list_percent:

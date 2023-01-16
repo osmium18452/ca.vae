@@ -29,7 +29,7 @@ class CNN(nn.Module):
         # print("out.shape",out.shape)
         out = self.flatten(out)
         out = self.linear(out)
-        out = F.relu(out)
+        # out = F.tanh(out)
         return out
 
     def loss_function(self, x, y) -> torch.Tensor:

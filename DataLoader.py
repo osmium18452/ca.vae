@@ -11,18 +11,19 @@ import os
 
 
 class DataLoader:
-    def __init__(self, trainset_filename, testset_filename, testset_gt_filename, n_variate=None, n_samples=None):
+    def __init__(self, trainset_filename, testset_filename, testset_gt_filename, n_variate=None, n_samples=None,
+                 data_normalization=False):
         f = open(trainset_filename, "rb")
         self.train_data = np.array(pickle.load(f))
         print("...", self.train_data.shape)
         f.close()
-        self.train_data = self.train_data[:n_samples, :n_variate]
+        self.train_data = self.train_data[:n_samples]
 
         f = open(testset_filename, "rb")
         self.test_data = np.array(pickle.load(f))
-        print('... test data',self.test_data.shape)
+        print('... test data', self.test_data.shape)
         f.close()
-        self.test_data = self.test_data[:n_samples, :n_variate]
+        self.test_data = self.test_data[:n_samples]
 
         f = open(testset_gt_filename, "rb")
         self.test_label = np.array(pickle.load(f))
@@ -32,10 +33,28 @@ class DataLoader:
         self.zero_variate = np.where(np.sum(self.train_data, axis=0) == 0)[0]
         self.non_zero_variate = np.where(np.sum(self.train_data, axis=0) != 0)[0]
 
-        self.non_zero_data_train = self.train_data.transpose()[self.non_zero_variate].transpose()
-        self.non_zero_data_test = self.test_data.transpose()[self.non_zero_variate].transpose()
-        print('non zero data test',self.non_zero_data_test.shape)
-        print('non zero data train',self.non_zero_data_train.shape)
+        self.non_zero_data_train = self.train_data.transpose()[self.non_zero_variate[:n_variate]].transpose()
+        self.non_zero_data_test = self.test_data.transpose()[self.non_zero_variate[:n_variate]].transpose()
+        # normalization
+        self.train_devation = np.std(self.non_zero_data_train, axis=0)
+        self.train_mean = np.mean(self.non_zero_data_train, axis=0)
+        # self.test_devation = np.std(self.non_zero_data_test, axis=0)
+        # self.test_mean = np.mean(self.non_zero_data_test, axis=0)
+        # print('data:',self.non_zero_data_train[0], 'mean:',self.train_mean, 'devation:',self.train_devation)
+        # print("ddd",(self.non_zero_data_train[0,0]-self.train_mean[0])/self.train_devation[0])
+        # print(self.non_zero_data_test[0], self.test_mean, self.test_devation)
+        # print(self.test_devation.shape, self.test_mean.shape, "test_devation,test_mean")
+        if data_normalization:
+            self.non_zero_data_train = (self.non_zero_data_train - self.train_mean) / self.train_devation
+            self.non_zero_data_test = (self.non_zero_data_test - self.train_mean) / self.train_devation
+        # print(self.non_zero_data_train[0])
+        # print(self.non_zero_data_test[0])
+
+        print('non zero data test', self.non_zero_data_test.shape)
+        print('non zero data train', self.non_zero_data_train.shape)
+
+    def load_std_and_mean(self):
+        return self.train_devation, self.train_mean
 
     def load_causal_data(self):
         return self.non_zero_data_train
@@ -83,7 +102,7 @@ class DataLoader:
                 for j in range(X_train.shape[-1] - window_size - 1):
                     self.R_trainset_x[i].append(X_train[index][j:j + window_size])
                     self.R_trainset_y[i].append([X_train[index][j + window_size]])
-                for j in range(X_test.shape[-1]-window_size-1):
+                for j in range(X_test.shape[-1] - window_size - 1):
                     self.R_testset_x[i].append(X_test[index][j:j + window_size])
                     self.R_testset_y[i].append([X_test[index][j + window_size]])
             print(X_train.shape[-1] - window_size - 1, X_train.shape[-1], len(self.R_testset_x[1]),
@@ -111,7 +130,7 @@ class DataLoader:
         self.P_trainset_y = []  # [variate_num,sample_number]
         self.P_testset_x = []
         self.P_testset_y = []
-        print("non zero data test 2",self.non_zero_data_test.shape)
+        print("non zero data test 2", self.non_zero_data_test.shape)
 
         for i in self.P:
             self.P_trainset_x.append(self.non_zero_data_train.transpose()[np.array([i] + parent_list[i])].transpose())
@@ -166,7 +185,8 @@ if __name__ == '__main__':
     trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
     testset_filename = "ServerMachineDataset/test/pkl/machine-1-1.pkl"
     testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-1-1.pkl"
-    dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=15)
+    dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=None,
+                            data_normalization=True)
     X = dataloader.load_causal_data()
     # Record = ges(X, maxP=5)
     with open("save/testgraph.pkl", "rb") as f:
@@ -175,8 +195,8 @@ if __name__ == '__main__':
     # print(Record['G'].graph)
     # print(Record['G'])
     dataloader.prepare_ad_data(Record['G'].graph, univariate=True)
-    R_trainset_x, P_trainset_x = dataloader.load_train_data()
-    R_testset_x, P_testset_x = dataloader.load_test_data()
+    R_trainset_x, P_trainset_x = dataloader.load_train_data(univariate=False)
+    R_testset_x, P_testset_x = dataloader.load_test_data(univariate=False)
 
     print(np.shape(R_trainset_x))
     for i in P_trainset_x:
