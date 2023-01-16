@@ -57,3 +57,5 @@ class InfernocusVAE(nn.Module):
             # mse_list.append(F.mse_loss(recon[:, self.slice_list[i]:self.slice_list[i + 1]],
             #                            x[:, self.slice_list[i]:self.slice_list[i + 1]]))
             # kl_loss=
+
+# [ 2  3  4  5  6  7  8  9  0 10 11 12 13 14 15  1 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32]

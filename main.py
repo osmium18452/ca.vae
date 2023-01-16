@@ -351,15 +351,23 @@ print("test set x", test_set_x.shape)
 ground_truth = np.concatenate((cnn_ground_truth, vae_ground_truth), axis=1)
 reconstruction_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
 if normalize_data:
-    devation,mean=dataloader.load_std_and_mean()
-    ground_truth=ground_truth*devation+mean
-    reconstruction_list=reconstruction_list*devation+mean
+    devation, mean = dataloader.load_std_and_mean()
+    ground_truth = ground_truth * devation + mean
+    reconstruction_list = reconstruction_list * devation + mean
 
-print("R&P:",dataloader.R,dataloader.P)
+print("R&P:", dataloader.R, dataloader.P)
 esp = 1e-30
 score_list = np.absolute(ground_truth - reconstruction_list)
 score_list_percent = np.absolute((ground_truth - reconstruction_list) / (ground_truth + esp))
 print(score_list_percent)
+location_list=dataloader.R+dataloader.P
+lut=np.zeros(len(location_list),dtype=int)
+for i,index in enumerate(location_list):
+    lut[index]+=i
+print(lut)
+score_list=score_list.transpose()[lut].transpose()
+score_list_percent=score_list_percent.transpose()[lut].transpose()
+ground_truth=ground_truth.transpose()[lut].transpose()
 f = open("resultpercent.csv", "w")
 for i in score_list_percent:
     for j in i:

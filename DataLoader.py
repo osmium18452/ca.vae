@@ -44,11 +44,16 @@ class DataLoader:
         # print("ddd",(self.non_zero_data_train[0,0]-self.train_mean[0])/self.train_devation[0])
         # print(self.non_zero_data_test[0], self.test_mean, self.test_devation)
         # print(self.test_devation.shape, self.test_mean.shape, "test_devation,test_mean")
+        print(self.non_zero_data_train[0])
+        print(self.non_zero_data_test[0])
+        # np.savetxt('original_test_set.csv',self.non_zero_data_test,delimiter=',')
         if data_normalization:
             self.non_zero_data_train = (self.non_zero_data_train - self.train_mean) / self.train_devation
             self.non_zero_data_test = (self.non_zero_data_test - self.train_mean) / self.train_devation
-        # print(self.non_zero_data_train[0])
-        # print(self.non_zero_data_test[0])
+        print(self.non_zero_data_train[0])
+        print(self.non_zero_data_test[0])
+        # np.savetxt('normalized_test_set.csv',self.non_zero_data_test,delimiter=',')
+        # np.savetxt('recon_test_set.csv',self.non_zero_data_test*self.train_devation+self.train_mean)
 
         print('non zero data test', self.non_zero_data_test.shape)
         print('non zero data train', self.non_zero_data_train.shape)
@@ -84,6 +89,7 @@ class DataLoader:
         self.parent_list = parent_list
         self.R = []
         self.P = []
+        print(graph.shape,'graph shape')
         for (i, node) in enumerate(parent_list):
             if len(node) == 0:
                 self.R.append(i)
@@ -182,14 +188,14 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    trainset_filename = "ServerMachineDataset/train/pkl/machine-1-1.pkl"
-    testset_filename = "ServerMachineDataset/test/pkl/machine-1-1.pkl"
-    testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-1-1.pkl"
+    trainset_filename = "ServerMachineDataset/train/pkl/machine-2-1.pkl"
+    testset_filename = "ServerMachineDataset/test/pkl/machine-2-1.pkl"
+    testset_gt_filename = "ServerMachineDataset/test_label/pkl/machine-2-1.pkl"
     dataloader = DataLoader(trainset_filename, testset_filename, testset_gt_filename, n_variate=None,
                             data_normalization=True)
     X = dataloader.load_causal_data()
     # Record = ges(X, maxP=5)
-    with open("save/testgraph.pkl", "rb") as f:
+    with open("save/machine-2-1.camap.pkl", "rb") as f:
         #     pickle.dump(Record,f)
         Record = pickle.load(f)
     # print(Record['G'].graph)
@@ -197,14 +203,15 @@ if __name__ == '__main__':
     dataloader.prepare_ad_data(Record['G'].graph, univariate=True)
     R_trainset_x, P_trainset_x = dataloader.load_train_data(univariate=False)
     R_testset_x, P_testset_x = dataloader.load_test_data(univariate=False)
+    print(dataloader.R+dataloader.P)
 
-    print(np.shape(R_trainset_x))
-    for i in P_trainset_x:
-        print(np.shape(i))
-
-    print(np.shape(R_testset_x))
-    for i in P_testset_x:
-        print(np.shape(i))
+    # print(np.shape(R_trainset_x))
+    # for i in P_trainset_x:
+    #     print(np.shape(i))
+    #
+    # print(np.shape(R_testset_x))
+    # for i in P_testset_x:
+    #     print(np.shape(i))
     # print(dataloader.non_zero_data.shape)
     # print(dataloader.load_non_zero_variate())
     # pyd = GraphUtils.to_pydot(Record['G'],labels=list(range(dataloader.load_num_non_zero_variate())))
