@@ -13,24 +13,31 @@ class VAE(nn.Module):
 
         self.encoder = nn.Sequential(
             nn.Linear(input_size, neuron_list[0]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(neuron_list[0], neuron_list[1]),
-            nn.ReLU(),
+            # nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(neuron_list[1], neuron_list[2]),
-            nn.ReLU(),
+            nn.Tanh(),
+            # nn.ReLU(),
         )
         self.encoder_mean = nn.Linear(neuron_list[2], latent_size)
         self.encoder_log_std = nn.Linear(neuron_list[2], latent_size)
 
         self.decoder = nn.Sequential(
-            nn.Linear(latent_size, neuron_list[0]),
-            nn.ReLU(),
-            nn.Linear(neuron_list[0], neuron_list[1]),
-            nn.ReLU(),
-            nn.Linear(neuron_list[1], neuron_list[2]),
-            nn.ReLU(),
-            nn.Linear(neuron_list[2], input_size),
-            nn.ReLU(),
+            nn.Linear(latent_size, neuron_list[2]),
+            # nn.ReLU(),
+            nn.Tanh(),
+            nn.Linear(neuron_list[2], neuron_list[1]),
+            # nn.ReLU(),
+            nn.Tanh(),
+            nn.Linear(neuron_list[1], neuron_list[0]),
+            # nn.ReLU(),
+            nn.Tanh(),
+            nn.Linear(neuron_list[0], input_size),
+            # nn.ReLU(),
+            # nn.Tanh(),
         )
 
         # self.fc1 = nn.Linear(input_size + label_size, 200)

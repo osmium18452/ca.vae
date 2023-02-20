@@ -44,14 +44,14 @@ class DataLoader:
         # print("ddd",(self.non_zero_data_train[0,0]-self.train_mean[0])/self.train_devation[0])
         # print(self.non_zero_data_test[0], self.test_mean, self.test_devation)
         # print(self.test_devation.shape, self.test_mean.shape, "test_devation,test_mean")
-        print(self.non_zero_data_train[0])
-        print(self.non_zero_data_test[0])
+        # print(self.non_zero_data_train[0])
+        print('original non zero data\n',self.non_zero_data_test[-1])
         # np.savetxt('original_test_set.csv',self.non_zero_data_test,delimiter=',')
         if data_normalization:
             self.non_zero_data_train = (self.non_zero_data_train - self.train_mean) / self.train_devation
             self.non_zero_data_test = (self.non_zero_data_test - self.train_mean) / self.train_devation
-        print(self.non_zero_data_train[0])
-        print(self.non_zero_data_test[0])
+        # print(self.non_zero_data_train[21])
+        print('normalized non zero data\n',self.non_zero_data_test[-1])
         # np.savetxt('normalized_test_set.csv',self.non_zero_data_test,delimiter=',')
         # np.savetxt('recon_test_set.csv',self.non_zero_data_test*self.train_devation+self.train_mean)
 

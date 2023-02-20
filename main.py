@@ -3,6 +3,7 @@ import argparse
 import numpy
 import torch
 from torch import nn, optim
+import torch.nn.functional as F
 from causallearn.search.ScoreBased.GES import ges
 
 # Visualization using pydot
@@ -169,7 +170,7 @@ for epochs in range(epoch):
 
     iter = train_set_size // batch_size
     with tqdm(total=iter, ascii=True) as pbar:
-        pbar.set_postfix_str("epochs: --- train loss: -.-----e---")
+        pbar.set_postfix_str("epochs: --- train loss: -.-----e--- mse loss: -.-----e---")
         for i in range(iter):
             big_batch_x = train_set_x[:, i * batch_size:(i + 1) * batch_size]
             big_batch_y = train_set_y[:, i * batch_size:(i + 1) * batch_size]
@@ -194,7 +195,7 @@ for epochs in range(epoch):
                 cnn_optimizer_list[j].step()
             mse /= cnn_num
             pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.5e" % (epochs + 1, epoch, mse))
+                "epochs: %d/%d train loss: %.5e mse loss: %.5e" % (epochs + 1, epoch, loss.item(), mse))
             pbar.update()
 
         if iter * batch_size != train_set_size:
@@ -241,7 +242,7 @@ for epochs in range(epoch):
 
     iter = train_set_size // batch_size
     with tqdm(total=iter, ascii=True) as pbar:
-        pbar.set_postfix_str("epochs: --- train loss: -.-----e---")
+        pbar.set_postfix_str("epochs: --- train loss: -.-----e--- mse loss: -.-----e---")
         for i in range(iter):
             big_batch_x = train_set[i * batch_size:(i + 1) * batch_size]
             mse = 0.
@@ -253,12 +254,12 @@ for epochs in range(epoch):
                 recon, mu, log_std = vae_list[j](batch_x)
                 optimizer_list[j].zero_grad()
                 loss = vae_list[j].loss_function(recon, batch_x, mu, log_std)
-                mse += mse_loss(recon, batch_x).item()
+                mse += F.mse_loss(recon, batch_x).item()
                 loss.backward()
                 optimizer_list[j].step()
             mse /= vae_num
             pbar.set_postfix_str(
-                "epochs: %d/%d train loss: %.5e" % (epochs + 1, epoch, mse))
+                "epochs: %d/%d train loss: %.5e mse loss: %.5e" % (epochs + 1, epoch, loss.item(), mse))
             pbar.update()
 
         if iter * batch_size != train_set_size:
@@ -350,24 +351,28 @@ print(cnn_ground_truth.shape, vae_ground_truth.shape)
 print("test set x", test_set_x.shape)
 ground_truth = np.concatenate((cnn_ground_truth, vae_ground_truth), axis=1)
 reconstruction_list = np.concatenate((cnn_recon_list, vae_recon_list), axis=1)
+
+location_list = dataloader.R + dataloader.P
+lut = np.zeros(len(location_list), dtype=int)
+for i, index in enumerate(location_list):
+    lut[index] += i
+print(lut)
+ground_truth = ground_truth.transpose()[lut].transpose()
+reconstruction_list = reconstruction_list.transpose()[lut].transpose()
+
 if normalize_data:
     devation, mean = dataloader.load_std_and_mean()
+    print('devation,mean', devation, mean)
     ground_truth = ground_truth * devation + mean
     reconstruction_list = reconstruction_list * devation + mean
+print('rebuilt ground truth\n', ground_truth[-1])
 
 print("R&P:", dataloader.R, dataloader.P)
 esp = 1e-30
 score_list = np.absolute(ground_truth - reconstruction_list)
 score_list_percent = np.absolute((ground_truth - reconstruction_list) / (ground_truth + esp))
 print(score_list_percent)
-location_list=dataloader.R+dataloader.P
-lut=np.zeros(len(location_list),dtype=int)
-for i,index in enumerate(location_list):
-    lut[index]+=i
-print(lut)
-score_list=score_list.transpose()[lut].transpose()
-score_list_percent=score_list_percent.transpose()[lut].transpose()
-ground_truth=ground_truth.transpose()[lut].transpose()
+
 f = open("resultpercent.csv", "w")
 for i in score_list_percent:
     for j in i:
@@ -386,6 +391,25 @@ for i in ground_truth:
         print(j, end=',', file=f)
     print(' ', file=f)
 f.close()
+
+length = 1000
+y1 = ground_truth[:length, 0]
+y2 = reconstruction_list[:length, 0]
+x = np.arange(y1.shape[0])
+plt.figure()
+plt.plot(x, y1,label='ground truth')
+plt.plot(x, y2,label='predicted')
+plt.legend()
+plt.savefig('plot.png', format='png')
+
+y1 = ground_truth[:length, 2]
+y2 = reconstruction_list[:length, 2]
+x = np.arange(y1.shape[0])
+plt.figure()
+plt.plot(x, y1, label='ground truth')
+plt.plot(x, y2, label='predicted')
+plt.legend()
+plt.savefig('plot2.png', format='png')
 
 # vae_abnormal_score_list = numpy.absolute(vae_recon_list - vae_ground_truth) / vae_ground_truth
 # cnn_abnormal_score_list = numpy.absolute(cnn_recon_list - cnn_ground_truth) / cnn_ground_truth
